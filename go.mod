@@ -5,7 +5,7 @@ go 1.26
 require (
 	github.com/goeventsource/goeventsource v0.0.0
 	github.com/google/uuid v1.6.0
-	github.com/jackc/pgx/v5 v5.7.4
+	github.com/jackc/pgx/v5 v5.9.1
 	github.com/testcontainers/testcontainers-go v0.41.0
 )
 
