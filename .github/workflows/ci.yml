@@ -1,6 +1,6 @@
 name: CI
 
-# Shared composite actions: goeventsource/workflow/.github/actions/* — pin @main to a tag on the workflow repo when ready.
+# Shared composites: goeventsource/workflow/.github/actions/* — pin @main to a tag on the workflow repo when ready.
 
 on:
   push:
