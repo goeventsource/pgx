@@ -1,0 +1,20 @@
+# Dependabot prepends prefix + ": " so messages are Conventional Commits (chore(deps)|chore(ci): …).
+# Merge these PRs with squash merge (or ensure the commit landing on main stays conventional).
+version: 2
+updates:
+  - package-ecosystem: gomod
+    directory: "/"
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      goeventsource:
+        patterns:
+          - "github.com/goeventsource/*"
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "chore(ci)"

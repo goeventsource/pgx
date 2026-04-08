@@ -1,0 +1,31 @@
+name: CI
+
+# Shared composite actions: goeventsource/workflow/.github/actions/* — pin @main to a tag on the workflow repo when ready.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  conventional-commit:
+    name: Check for conventional commits
+    runs-on: ubuntu-latest
+    steps:
+      - uses: goeventsource/workflow/.github/actions/conventional-commit@main
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: goeventsource/workflow/.github/actions/satellite-test@main
+        with:
+          go-version: "1.26"
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: goeventsource/workflow/.github/actions/satellite-lint@main
+        with:
+          go-version: "1.26"

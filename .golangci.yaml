@@ -1,0 +1,15 @@
+version: "2"
+
+run:
+  tests: true
+
+formatters:
+  enable:
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/goeventsource/pgx
+
+linters:
+  default: all
