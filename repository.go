@@ -10,9 +10,14 @@ import (
 	"github.com/goeventsource/goeventsource"
 )
 
+type (
+	repoID   = goeventsource.ID
+	repoRoot = goeventsource.Root[repoID]
+)
+
 var (
-	// Ensure Repository implements goeventsource.Repository at compile time
-	_ goeventsource.Repository[goeventsource.ID, goeventsource.Root[goeventsource.ID]] = &Repository[goeventsource.ID, goeventsource.Root[goeventsource.ID]]{}
+	// Ensure Repository implements goeventsource.Repository at compile time.
+	_ goeventsource.Repository[repoID, repoRoot] = (*Repository[repoID, repoRoot])(nil)
 )
 
 // RepositoryOpt is a function signature for providing options to configure a Repository.
@@ -119,7 +124,7 @@ func (r Repository[K, V]) readWithContext(ctx context.Context, id K) (V, error) 
 	return root, nil
 }
 
-// Write appends the goeventsource.Events from the given goeventsource.Root to the goeventsource.Store and performs any available projection.
+// Write appends pending events from root to the store and runs projectors / snapshot side effects.
 // It returns an error if an error occurs during the write operation.
 func (r Repository[K, V]) Write(ctx context.Context, root V) error {
 	txConn, shouldCommit, err := tx(ctx, r.pool)

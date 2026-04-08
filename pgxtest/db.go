@@ -14,6 +14,11 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
+const (
+	postgresReadyLogOccurrences = 2
+	postgresReadyPollInterval   = 100 * time.Millisecond
+)
+
 var (
 	//go:embed testdata/event_store_table.sql
 	eventStoreTableMigration string
@@ -36,8 +41,8 @@ func newPoolAndContainer(ctx context.Context) (*pgxpool.Pool, testcontainers.Con
 				NetworkAliases: map[string][]string{"5432": {"5432"}},
 				WaitingFor: (&wait.LogStrategy{
 					Log:          "database system is ready to accept connections",
-					Occurrence:   2,
-					PollInterval: 100 * time.Millisecond,
+					Occurrence:   postgresReadyLogOccurrences,
+					PollInterval: postgresReadyPollInterval,
 				}).WithStartupTimeout(time.Minute),
 				Env: map[string]string{
 					"POSTGRES_DB":       "source",

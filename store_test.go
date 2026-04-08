@@ -5,8 +5,9 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/goeventsource/pgx/pgxtest"
 	"github.com/goeventsource/goeventsource/goeventsourcetest/goeventsourcetestintegration"
+
+	"github.com/goeventsource/pgx/pgxtest"
 )
 
 func TestStore(t *testing.T) {

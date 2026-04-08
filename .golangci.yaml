@@ -1,15 +1,106 @@
 version: "2"
-
-run:
-  tests: true
-
+linters:
+  default: none
+  enable:
+    - bodyclose
+    - dogsled
+    - dupl
+    - errcheck
+    - errorlint
+    - funlen
+    - gocheckcompilerdirectives
+    - goconst
+    - gocritic
+    - gocyclo
+    - godox
+    - goprintffuncname
+    - gosec
+    - govet
+    - ineffassign
+    - lll
+    - misspell
+    - mnd
+    - nakedret
+    - noctx
+    - nolintlint
+    - sloglint
+    - staticcheck
+    - unconvert
+    - unparam
+    - unused
+    - whitespace
+  settings:
+    dupl:
+      threshold: 100
+    errorlint:
+      asserts: false
+    funlen:
+      lines: -1
+      statements: 50
+    goconst:
+      min-len: 2
+      min-occurrences: 3
+    gocyclo:
+      min-complexity: 20
+    lll:
+      line-length: 140
+    misspell:
+      locale: US
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+      allow-unused: false
+    sloglint:
+      no-mixed-args: true
+      attr-only: true
+      no-global: all
+      context: all
+      static-msg: true
+      key-naming-case: snake
+      args-on-sep-lines: true
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - staticcheck
+        text: "ST1003:"
+      - linters:
+          - gosec
+        text: G115
+      - linters:
+          - dupl
+          - gocyclo
+          - lll
+          - mnd
+        path: (.+)_test\.go
 formatters:
   enable:
+    - gofmt
     - goimports
   settings:
+    gofmt:
+      rewrite-rules:
+        - pattern: interface{}
+          replacement: any
+        - pattern: slog.String("error", err)
+          replacement: slog.Any("err", err)
+        - pattern: slog.String("error", err.Error())
+          replacement: slog.Any("err", err)
+        - pattern: slog.String("err", err)
+          replacement: slog.Any("err", err)
+        - pattern: slog.String("err", err.Error())
+          replacement: slog.Any("err", err)
     goimports:
       local-prefixes:
         - github.com/goeventsource/pgx
-
-linters:
-  default: all
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

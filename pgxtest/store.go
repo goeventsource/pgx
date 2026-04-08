@@ -5,8 +5,9 @@ import (
 
 	"github.com/goeventsource/goeventsource"
 	"github.com/goeventsource/goeventsource/goeventsourcetest/goeventsourcetestintegration"
-	"github.com/goeventsource/pgx"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/goeventsource/pgx"
 )
 
 // StoreConfig represents the configuration to create a pgx.Store via NewStore

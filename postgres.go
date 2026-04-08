@@ -24,10 +24,12 @@ func validateSQLIdentifier(s string) error {
 	return nil
 }
 
+const maxQualifiedTableParts = 2
+
 // sanitizeQualifiedTable builds a quoted "schema"."table" or "table" fragment using pgx.Identifier.
 func sanitizeQualifiedTable(qual string) (string, error) {
 	parts := strings.Split(qual, ".")
-	if len(parts) > 2 {
+	if len(parts) > maxQualifiedTableParts {
 		return "", fmt.Errorf("table name %q: use at most schema.table", qual)
 	}
 	id := make(jackc.Identifier, 0, len(parts))

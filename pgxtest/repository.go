@@ -2,8 +2,9 @@ package pgxtest
 
 import (
 	"github.com/goeventsource/goeventsource"
-	"github.com/goeventsource/pgx"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/goeventsource/pgx"
 )
 
 // RepositoryConfig represents the configuration to create a pgx.Repository via NewRepository

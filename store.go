@@ -44,14 +44,16 @@ func NewStore[K goeventsource.ID](
 		return nil, fmt.Errorf("primaryKeyName (Postgres constraint name for version conflicts): %w", err)
 	}
 	return &Store[K]{
-		pool:   pool,
-		codec:  codec,
+		pool:  pool,
+		codec: codec,
 		appendStmt: fmt.Sprintf(
-			`INSERT INTO %s (event_id, event_name, event_data, version, stream_id, stream_name, metadata, occurred_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+			`INSERT INTO %s (event_id, event_name, event_data, version, stream_id, stream_name, metadata, occurred_at) `+
+				`VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
 			qtable,
 		),
 		streamStmt: fmt.Sprintf(
-			`SELECT event_id, event_name, event_data, version, stream_id, stream_name, metadata, occurred_at FROM %s WHERE stream_id = $1 AND version >= $2 ORDER BY version`,
+			`SELECT event_id, event_name, event_data, version, stream_id, stream_name, metadata, occurred_at `+
+				`FROM %s WHERE stream_id = $1 AND version >= $2 ORDER BY version`,
 			qtable,
 		),
 		primaryKeyName: primaryKeyName,

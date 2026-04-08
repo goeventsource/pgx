@@ -39,7 +39,9 @@ func NewSnapshotter[K goeventsource.ID, V goeventsource.Root[K]](
 		strategy: strategy,
 		readStmt: fmt.Sprintf(`SELECT snapshot FROM %s WHERE id=$1`, qtable),
 		upsertStmt: fmt.Sprintf(
-			`INSERT INTO %s (id, name, version, snapshot, created_at) VALUES ($1,$2,$3,$4,$5) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, version = EXCLUDED.version, snapshot = EXCLUDED.snapshot, created_at = EXCLUDED.created_at;`,
+			`INSERT INTO %s (id, name, version, snapshot, created_at) VALUES ($1,$2,$3,$4,$5) `+
+				`ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, version = EXCLUDED.version, `+
+				`snapshot = EXCLUDED.snapshot, created_at = EXCLUDED.created_at;`,
 			qtable,
 		),
 	}, nil

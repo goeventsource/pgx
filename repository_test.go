@@ -6,9 +6,10 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/goeventsource/goeventsource"
+	"github.com/goeventsource/goeventsource/goeventsourcetest/goeventsourcetestintegration"
+
 	"github.com/goeventsource/pgx"
 	"github.com/goeventsource/pgx/pgxtest"
-	"github.com/goeventsource/goeventsource/goeventsourcetest/goeventsourcetestintegration"
 )
 
 func TestRepository(t *testing.T) {
