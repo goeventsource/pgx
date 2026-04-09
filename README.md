@@ -8,7 +8,7 @@
 go get github.com/goeventsource/pgx@latest
 ```
 
-The module path and root **package name** are both **`pgx`**. The driver’s root import `github.com/jackc/pgx/v5` is aliased inside this module (for example `jackc`) so it does not clash with this package name.
+The module path and root **package name** are both **`pgx`**. The driver's root import `github.com/jackc/pgx/v5` is aliased inside this module (for example `jackc`) so it does not clash with this package name.
 
 ```go
 import (
@@ -79,11 +79,11 @@ cfg.StoreConfig.Codec = codec // set like in example-banking/cmd/main.go
 repo, _ := pgxtest.NewRepository(cfg)
 ```
 
-See [`../example-banking`](../example-banking/README.md) for a full wiring including snapshot strategy and HTTP.
+See [`example-banking`](https://github.com/goeventsource/example-banking) for a full wiring including snapshot strategy and HTTP.
 
 ## Optional: observability plugin
 
-Wrap the concrete `Store` or `Repository` with [`github.com/goeventsource/opentelemetry`](../opentelemetry/README.md) **outside** your domain so spans cover the storage boundary:
+Wrap the concrete `Store` or `Repository` with [`github.com/goeventsource/opentelemetry`](https://github.com/goeventsource/opentelemetry) **outside** your domain so spans cover the storage boundary:
 
 ```go
 import otes "github.com/goeventsource/opentelemetry"
@@ -91,7 +91,7 @@ import otes "github.com/goeventsource/opentelemetry"
 repo = otes.NewRepository(repo, "payments-api")
 ```
 
-## Running tests in this repo
+## Tests
 
 Integration tests use **testcontainers** (Docker required):
 
@@ -100,7 +100,3 @@ go test ./...
 ```
 
 Use `go test -short ./...` if you add short-mode skips in your own fork.
-
-## Unpublished core module
-
-Use `replace` for `github.com/goeventsource/goeventsource` or the [`new_org/`](../README.md) workspace until tagged releases exist.
