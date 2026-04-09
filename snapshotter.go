@@ -55,36 +55,30 @@ func (s *Snapshotter[K, V]) WriteSnapshot(ctx context.Context, root V) error {
 		return nil
 	}
 
-	tx, shouldCommit, err := tx(ctx, s.pool)
-	if err != nil {
+	if err := InTransaction(ctx, s.pool, func(tx jackc.Tx) error {
+		state, err := s.codec.Encode(root)
+		if err != nil {
+			return fmt.Errorf("%w: could not encode: %w", goeventsource.ErrSnapshotterWrite, err)
+		}
+
+		if _, err := tx.Exec(
+			ctx,
+			s.upsertStmt,
+			goeventsource.RootID(root).String(),
+			goeventsource.RootName(root),
+			goeventsource.RootVersion(root),
+			state,
+			time.Now(),
+		); err != nil {
+			return fmt.Errorf("%w: could not execute query: %w", goeventsource.ErrSnapshotterWrite, err)
+		}
+		return nil
+	}); err != nil {
+		if errors.Is(err, goeventsource.ErrSnapshotterWrite) {
+			return err
+		}
 		return fmt.Errorf("%w: %w", goeventsource.ErrSnapshotterWrite, err)
 	}
-
-	state, err := s.codec.Encode(root)
-	if err != nil {
-		_ = tx.Rollback(ctx)
-		return fmt.Errorf("%w: could not encode: %w", goeventsource.ErrSnapshotterWrite, err)
-	}
-
-	if _, err := tx.Exec(
-		ctx,
-		s.upsertStmt,
-		goeventsource.RootID(root).String(),
-		goeventsource.RootName(root),
-		goeventsource.RootVersion(root),
-		state,
-		time.Now(),
-	); err != nil {
-		_ = tx.Rollback(ctx)
-		return fmt.Errorf("%w: could not execute query: %w", goeventsource.ErrSnapshotterWrite, err)
-	}
-
-	if shouldCommit {
-		if err := tx.Commit(ctx); err != nil {
-			return fmt.Errorf("%w:  could not commit transaction: %w", goeventsource.ErrSnapshotterWrite, err)
-		}
-	}
-
 	return nil
 }
 

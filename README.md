@@ -33,7 +33,7 @@ You keep aggregates and events in the core style; this module only **stores and 
 
 | Import | Package | Purpose |
 |--------|---------|---------|
-| `github.com/goeventsource/pgx` | **`pgx`** | `NewStore`, `NewRepository`, `NewSnapshotter`, `WithSnapshotterOpt`, `WithProjectorOpt`, context transaction helpers (`WithValueTx`, `ValueTx`) |
+| `github.com/goeventsource/pgx` | **`pgx`** | `NewStore`, `NewRepository`, `NewSnapshotter`, `WithSnapshotterOpt`, `WithProjectorOpt`, `InTransaction` |
 | `github.com/goeventsource/pgx/pgxtest` | **`pgxtest`** | Testcontainers-backed pool, seeded schema, helpers aligned with production constructors |
 
 ## Quick start: production-shaped repository

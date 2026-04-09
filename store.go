@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 
+	jackc "github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -63,60 +64,50 @@ func NewStore[K goeventsource.ID](
 
 // Append appends the given goeventsource.Event to the Store.
 func (s *Store[K]) Append(ctx context.Context, evs ...goeventsource.Event) error {
-	tx, shouldCommit, err := tx(ctx, s.pool)
-	if err != nil {
-		return fmt.Errorf("%w: %w", goeventsource.ErrStoreAppend, err)
-	}
+	if err := InTransaction(ctx, s.pool, func(tx jackc.Tx) error {
+		for i := range evs {
+			ev := evs[i]
+			for _, opt := range s.appendOpts {
+				ev.Metadata = opt(ctx, ev.Metadata)
+			}
 
-	for i := range evs {
-		ev := evs[i]
-		for _, opt := range s.appendOpts {
-			ev.Metadata = opt(ctx, ev.Metadata)
-		}
+			data, err := s.codec.Encode(ev)
+			if err != nil {
+				return fmt.Errorf("%w: could not encode domain event: %w", goeventsource.ErrStoreAppend, err)
+			}
 
-		data, err := s.codec.Encode(ev)
-		if err != nil {
-			_ = tx.Rollback(ctx)
-			return fmt.Errorf("%w: could not encode domain event: %w", goeventsource.ErrStoreAppend, err)
-		}
+			metadata, err := json.Marshal(ev.Metadata)
+			if err != nil {
+				return fmt.Errorf("%w: could not encode metadata: %w", goeventsource.ErrStoreAppend, err)
+			}
 
-		metadata, err := json.Marshal(ev.Metadata)
-		if err != nil {
-			_ = tx.Rollback(ctx)
-			return fmt.Errorf("%w: could not encode metadata: %w", goeventsource.ErrStoreAppend, err)
-		}
-
-		if _, err := tx.Exec(
-			ctx,
-			s.appendStmt,
-			ev.ID.String(),
-			ev.DomainEventName,
-			data,
-			ev.Version,
-			ev.StreamID.String(),
-			ev.StreamName,
-			metadata,
-			ev.OccurredAt,
-		); err != nil {
-			_ = tx.Rollback(ctx)
-			switch {
-			case s.isConflictError(err):
-				return fmt.Errorf("%w: could not commit appended events: %w", goeventsource.ErrStoreAppendVersionConflict, err)
-			default:
-				return fmt.Errorf("%w: could not insert event model: %w", goeventsource.ErrStoreAppend, err)
+			if _, err := tx.Exec(
+				ctx,
+				s.appendStmt,
+				ev.ID.String(),
+				ev.DomainEventName,
+				data,
+				ev.Version,
+				ev.StreamID.String(),
+				ev.StreamName,
+				metadata,
+				ev.OccurredAt,
+			); err != nil {
+				switch {
+				case s.isConflictError(err):
+					return fmt.Errorf("%w: could not commit appended events: %w", goeventsource.ErrStoreAppendVersionConflict, err)
+				default:
+					return fmt.Errorf("%w: could not insert event model: %w", goeventsource.ErrStoreAppend, err)
+				}
 			}
 		}
-	}
-
-	if shouldCommit {
-		switch err := tx.Commit(ctx); {
-		case s.isConflictError(err):
-			return fmt.Errorf("%w: could not commit appended events: %w", goeventsource.ErrStoreAppendVersionConflict, err)
-		case err != nil:
-			return fmt.Errorf("%w: could not commit appended events: %w", goeventsource.ErrStoreAppend, err)
+		return nil
+	}); err != nil {
+		if errors.Is(err, goeventsource.ErrStoreAppend) {
+			return err
 		}
+		return fmt.Errorf("%w: %w", goeventsource.ErrStoreAppend, err)
 	}
-
 	return nil
 }
 

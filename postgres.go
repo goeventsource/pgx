@@ -53,13 +53,13 @@ func (id simpleID) String() string {
 
 type txValue struct{}
 
-// WithValueTx returns a context that carries the given jackc/pgx transaction.
-func WithValueTx(ctx context.Context, tx jackc.Tx) context.Context {
+// withValueTx returns a context that carries the given jackc/pgx transaction.
+func withValueTx(ctx context.Context, tx jackc.Tx) context.Context {
 	return context.WithValue(ctx, txValue{}, tx)
 }
 
-// ValueTx returns the jackc/pgx transaction from the context, if any.
-func ValueTx(ctx context.Context) (jackc.Tx, bool) {
+// valueTx returns the jackc/pgx transaction from the context, if any.
+func valueTx(ctx context.Context) (jackc.Tx, bool) {
 	tx, ok := ctx.Value(txValue{}).(jackc.Tx)
 	if !ok {
 		return nil, false
@@ -67,23 +67,9 @@ func ValueTx(ctx context.Context) (jackc.Tx, bool) {
 	return tx, true
 }
 
-// tx returns a transaction or an error in case of failure.
-// The transaction is first looked into the context, meaning a parent may have opened one already.
-// The function returns also a boolean flag, when set as true means the tx MUST be committed by the caller
-func tx(ctx context.Context, pool *pgxpool.Pool) (t jackc.Tx, shouldCommit bool, err error) {
-	if tx, hasTx := ValueTx(ctx); hasTx {
-		return tx, false, nil
-	}
-	tx, err := pool.Begin(ctx)
-	if err != nil {
-		return nil, false, fmt.Errorf("could not begin transaction: %w", err)
-	}
-	return tx, true, nil
-}
-
 // queryRow runs QueryRow on the transaction from ctx when present, otherwise on pool.
 func queryRow(ctx context.Context, pool *pgxpool.Pool, sql string, args ...any) jackc.Row {
-	if t, ok := ValueTx(ctx); ok {
+	if t, ok := valueTx(ctx); ok {
 		return t.QueryRow(ctx, sql, args...)
 	}
 	return pool.QueryRow(ctx, sql, args...)
@@ -91,32 +77,30 @@ func queryRow(ctx context.Context, pool *pgxpool.Pool, sql string, args ...any) 
 
 // query runs Query on the transaction from ctx when present, otherwise on pool.
 func query(ctx context.Context, pool *pgxpool.Pool, sql string, args ...any) (jackc.Rows, error) {
-	if t, ok := ValueTx(ctx); ok {
+	if t, ok := valueTx(ctx); ok {
 		return t.Query(ctx, sql, args...)
 	}
 	return pool.Query(ctx, sql, args...)
 }
 
-// InTransaction runs fn with a context that carries a pgx transaction. If ctx already carries a tx,
+// InTransaction runs fn with a pgx transaction. If ctx already carries a tx (via withValueTx),
 // fn runs in that transaction and this function does not commit or roll back. Otherwise it begins a
-// transaction, runs fn, commits on success or rolls back on failure.
-func InTransaction(ctx context.Context, pool *pgxpool.Pool, fn func(context.Context) error) error {
-	txConn, shouldCommit, err := tx(ctx, pool)
+// new transaction, runs fn, commits on success or rolls back on failure.
+func InTransaction(ctx context.Context, pool *pgxpool.Pool, fn func(jackc.Tx) error) error {
+	if t, ok := valueTx(ctx); ok {
+		return fn(t)
+	}
+	txConn, err := pool.Begin(ctx)
 	if err != nil {
+		return fmt.Errorf("could not begin transaction: %w", err)
+	}
+	if err := fn(txConn); err != nil {
+		_ = txConn.Rollback(ctx)
 		return err
 	}
-	ctx = WithValueTx(ctx, txConn)
-	if err := fn(ctx); err != nil {
-		if shouldCommit {
-			_ = txConn.Rollback(ctx)
-		}
-		return err
-	}
-	if shouldCommit {
-		if err := txConn.Commit(ctx); err != nil {
-			_ = txConn.Rollback(ctx)
-			return fmt.Errorf("could not commit transaction: %w", err)
-		}
+	if err := txConn.Commit(ctx); err != nil {
+		_ = txConn.Rollback(ctx)
+		return fmt.Errorf("could not commit transaction: %w", err)
 	}
 	return nil
 }

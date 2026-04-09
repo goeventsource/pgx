@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	jackc "github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/goeventsource/goeventsource"
@@ -72,8 +73,9 @@ func NewRepository[K goeventsource.ID, V goeventsource.Root[K]](
 func (r Repository[K, V]) Read(ctx context.Context, id K) (V, error) {
 	if r.snapshotter != nil {
 		var result V
-		var readErr error
-		err := InTransaction(ctx, r.pool, func(txCtx context.Context) error {
+		err := InTransaction(ctx, r.pool, func(txConn jackc.Tx) error {
+			txCtx := withValueTx(ctx, txConn)
+			var readErr error
 			result, readErr = r.readWithContext(txCtx, id)
 			return readErr
 		})
@@ -126,46 +128,32 @@ func (r Repository[K, V]) readWithContext(ctx context.Context, id K) (V, error) 
 
 // Write appends pending events from root to the store and runs projectors / snapshot side effects.
 // It returns an error if an error occurs during the write operation.
+// FlushEvents is called only after the transaction commits successfully.
 func (r Repository[K, V]) Write(ctx context.Context, root V) error {
-	txConn, shouldCommit, err := tx(ctx, r.pool)
-	if err != nil {
-		return fmt.Errorf("%w: could not begin transaction: %w", goeventsource.ErrRepositoryWrite, err)
-	}
-	ctx = WithValueTx(ctx, txConn)
-
 	evs := goeventsource.PeekEvents(root)
-	if err := r.store.Append(ctx, evs...); err != nil {
-		if shouldCommit {
-			_ = txConn.Rollback(ctx)
+	if err := InTransaction(ctx, r.pool, func(txConn jackc.Tx) error {
+		txCtx := withValueTx(ctx, txConn)
+		if err := r.store.Append(txCtx, evs...); err != nil {
+			return err
 		}
+
+		for i := range r.projectors {
+			if err := r.projectors[i].Project(txCtx, evs...); err != nil {
+				return err
+			}
+		}
+
+		if r.snapshotter != nil {
+			if err := r.snapshotter.WriteSnapshot(txCtx, root); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}); err != nil {
 		return fmt.Errorf("%w: %w", goeventsource.ErrRepositoryWrite, err)
 	}
+
 	goeventsource.FlushEvents(root)
-
-	for i := range r.projectors {
-		if err := r.projectors[i].Project(ctx, evs...); err != nil {
-			if shouldCommit {
-				_ = txConn.Rollback(ctx)
-			}
-			return fmt.Errorf("%w: %w", goeventsource.ErrRepositoryWrite, err)
-		}
-	}
-
-	if r.snapshotter != nil {
-		if err := r.snapshotter.WriteSnapshot(ctx, root); err != nil {
-			if shouldCommit {
-				_ = txConn.Rollback(ctx)
-			}
-			return fmt.Errorf("%w: %w", goeventsource.ErrRepositoryWrite, err)
-		}
-	}
-
-	if shouldCommit {
-		if err := txConn.Commit(ctx); err != nil {
-			_ = txConn.Rollback(ctx)
-			return fmt.Errorf("%w: could not commit write aggregate events: %w", goeventsource.ErrRepositoryWrite, err)
-		}
-	}
-
 	return nil
 }
